@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'log_types.dart';
+import 'peekaboo_config.dart';
 
-/// Ring-buffered log store + broadcast stream. The overlay subscribes to
-/// [stream] and re-renders; producers (Dio interceptor, socket wrapper,
-/// internal `Peekaboo.log*` helpers) push [LogEntry]s via [add].
+/// Ring-buffered log store + broadcast stream. Producers (Dio
+/// interceptor, socket helper, `Peekaboo.*` api) push entries via [add].
 ///
-/// Defaults to debug-only — flip [isEnabled] for QA release builds.
+/// All work is wrapped in try/catch — a bad sink, a circular JSON, or a
+/// listener that throws cannot bring down the host app. Peekaboo
+/// failures print to debugPrint in debug builds and disappear in
+/// release.
 class PeekabooStore {
   PeekabooStore._();
   static final PeekabooStore instance = PeekabooStore._();
@@ -20,21 +23,62 @@ class PeekabooStore {
       StreamController<List<LogEntry>>.broadcast();
 
   bool isEnabled = kDebugMode;
+  PeekabooConfig _config = PeekabooConfig.defaults;
 
   Stream<List<LogEntry>> get stream => _controller.stream;
   List<LogEntry> get entries => List.unmodifiable(_buffer);
+  PeekabooConfig get config => _config;
 
+  /// Attach a custom configuration. Call at app boot or behind a
+  /// feature flag. Replaces any previously-set config.
+  void configure(PeekabooConfig config) {
+    _config = config;
+  }
+
+  /// Buffer + broadcast one entry. Silently drops when disabled, when
+  /// the channel isn't in [PeekabooConfig.enabledChannels], or when a
+  /// user-supplied filter returns false. Never throws.
   void add(LogEntry entry) {
-    if (!isEnabled) return;
-    _buffer.insert(0, entry);
-    if (_buffer.length > _maxEntries) {
-      _buffer.removeRange(_maxEntries, _buffer.length);
+    try {
+      if (!isEnabled) return;
+      if (!_config.enabledChannels.contains(entry.channel)) return;
+      final filter = _config.filter;
+      if (filter != null && !filter(entry)) return;
+
+      _buffer.insert(0, entry);
+      if (_buffer.length > _maxEntries) {
+        _buffer.removeRange(_maxEntries, _buffer.length);
+      }
+      try {
+        _controller.add(List.unmodifiable(_buffer));
+      } catch (e, st) {
+        _fail('stream broadcast', e, st);
+      }
+      final sink = _config.onCapture;
+      if (sink != null) {
+        try {
+          sink(entry);
+        } catch (e, st) {
+          _fail('onCapture sink', e, st);
+        }
+      }
+    } catch (e, st) {
+      _fail('add entry', e, st);
     }
-    _controller.add(List.unmodifiable(_buffer));
   }
 
   void clear() {
-    _buffer.clear();
-    _controller.add(const []);
+    try {
+      _buffer.clear();
+      _controller.add(const []);
+    } catch (e, st) {
+      _fail('clear', e, st);
+    }
+  }
+
+  void _fail(String what, Object err, StackTrace st) {
+    if (kDebugMode) {
+      debugPrint('[peekaboo] $what failed: $err\n$st');
+    }
   }
 }

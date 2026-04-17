@@ -1,16 +1,13 @@
 import 'log_types.dart';
+import 'peekaboo_config.dart';
 import 'peekaboo_store.dart';
 
-/// Public app-facing API. Call these anywhere in your app (controllers,
-/// blocs, services) and the lines show up alongside the captured API
-/// and socket traffic in the overlay's "APP" filter chip.
+/// Public app-facing API. Call these anywhere — controllers, blocs,
+/// services — and the lines show up in the overlay under the "APP"
+/// filter chip.
 ///
-/// Example:
-/// ```dart
-/// Peekaboo.d('Refreshing feed');
-/// Peekaboo.w('Unexpected empty list');
-/// Peekaboo.e('Login failed', body: error.toString());
-/// ```
+/// Every method is wrapped so a bad toString() / throwing listener can
+/// never surface to the caller.
 class Peekaboo {
   const Peekaboo._();
 
@@ -18,7 +15,12 @@ class Peekaboo {
   static set enabled(bool value) => PeekabooStore.instance.isEnabled = value;
   static bool get enabled => PeekabooStore.instance.isEnabled;
 
-  /// Wipe the buffer (used by the Clear button in the overlay).
+  /// Attach a [PeekabooConfig] — control which channels record, filter
+  /// entries, or mirror to an external sink (Sentry, Crashlytics…).
+  static void configure(PeekabooConfig config) =>
+      PeekabooStore.instance.configure(config);
+
+  /// Wipe the buffer (also exposed via the overlay's Clear button).
   static void clear() => PeekabooStore.instance.clear();
 
   static void d(String title, {String? body}) =>
@@ -30,17 +32,20 @@ class Peekaboo {
   static void e(String title, {String? body}) =>
       _push(LogLevel.error, title, body);
 
-  /// Raw entry — for producers that want to set channel/status/duration
-  /// directly (e.g. Dio interceptor, socket wrapper).
+  /// Raw entry — set channel / status / duration yourself.
   static void add(LogEntry entry) => PeekabooStore.instance.add(entry);
 
   static void _push(LogLevel level, String title, String? body) {
-    PeekabooStore.instance.add(LogEntry(
-      at: DateTime.now(),
-      channel: LogChannel.app,
-      level: level,
-      title: title,
-      body: body,
-    ));
+    try {
+      PeekabooStore.instance.add(LogEntry(
+        at: DateTime.now(),
+        channel: LogChannel.app,
+        level: level,
+        title: title,
+        body: body,
+      ));
+    } catch (_) {
+      // Store.add already logs its own failures; nothing more to do.
+    }
   }
 }
