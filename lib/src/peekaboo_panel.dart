@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'log_types.dart';
+import 'peekaboo_detail_sheet.dart';
 import 'peekaboo_store.dart';
 import 'peekaboo_theme.dart';
 
@@ -310,7 +310,7 @@ class _Row extends StatelessWidget {
       backgroundColor: theme.panelBackground,
       isScrollControlled: true,
       useRootNavigator: true,
-      builder: (_) => _DetailSheet(theme: theme, entry: entry),
+      builder: (_) => PeekabooDetailSheet(theme: theme, entry: entry),
     );
   }
 }
@@ -341,67 +341,3 @@ class _Badge extends StatelessWidget {
   }
 }
 
-class _DetailSheet extends StatelessWidget {
-  final PeekabooTheme theme;
-  final LogEntry entry;
-  const _DetailSheet({required this.theme, required this.entry});
-
-  @override
-  Widget build(BuildContext context) {
-    return FractionallySizedBox(
-      heightFactor: 0.9,
-      child: SafeArea(
-        top: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 8, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      entry.title,
-                      style: TextStyle(
-                        color: theme.panelTextPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.copy, color: theme.panelTextMuted),
-                    onPressed: () => Clipboard.setData(
-                      ClipboardData(text: entry.body ?? entry.title),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close, color: theme.panelTextPrimary),
-                    // Root-navigator pop so it works in router-based apps
-                    // that don't expose a nested Navigator here.
-                    onPressed: () =>
-                        Navigator.of(context, rootNavigator: true).maybePop(),
-                  ),
-                ],
-              ),
-            ),
-            Divider(color: theme.panelDivider, height: 1),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: SelectableText(
-                  entry.body ?? '(no body)',
-                  style: TextStyle(
-                    color: theme.panelTextPrimary,
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                    height: 1.45,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

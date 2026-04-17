@@ -7,8 +7,7 @@ import 'log_types.dart';
 import 'peekaboo_store.dart';
 
 /// Drop-in Dio interceptor that pushes every request/response/error
-/// into the overlay. Attach alongside any console logger — both can
-/// coexist.
+/// into the overlay with full cURL-ready details.
 ///
 /// ```dart
 /// dio.interceptors.add(PeekabooDioInterceptor());
@@ -52,6 +51,9 @@ class PeekabooDioInterceptor extends Interceptor {
         body: _safeEncode(response.data),
         statusCode: status,
         duration: _elapsed(opts),
+        api: _buildApiDetails(opts, response.headers.map.map(
+              (k, v) => MapEntry(k, v.join(', ')),
+            )),
       ));
     } catch (e, st) {
       _fail('onResponse', e, st);
@@ -71,11 +73,29 @@ class PeekabooDioInterceptor extends Interceptor {
         body: _safeEncode(err.response?.data) ?? err.message,
         statusCode: err.response?.statusCode,
         duration: _elapsed(opts),
+        api: _buildApiDetails(opts, err.response?.headers.map.map(
+              (k, v) => MapEntry(k, v.join(', ')),
+            ) ?? const {}),
       ));
     } catch (e, st) {
       _fail('onError', e, st);
     }
     super.onError(err, handler);
+  }
+
+  ApiDetails _buildApiDetails(
+    RequestOptions opts,
+    Map<String, String> responseHeaders,
+  ) {
+    return ApiDetails(
+      method: opts.method,
+      url: opts.uri.toString(),
+      requestHeaders: opts.headers.map(
+        (k, v) => MapEntry(k, v.toString()),
+      ),
+      requestBody: _safeEncode(opts.data),
+      responseHeaders: responseHeaders,
+    );
   }
 
   Duration? _elapsed(RequestOptions options) {

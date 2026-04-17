@@ -36,6 +36,7 @@ library peekaboo;
 export 'src/log_types.dart';
 export 'src/peekaboo_api.dart';
 export 'src/peekaboo_config.dart';
+export 'src/peekaboo_detail_sheet.dart';
 export 'src/peekaboo_dio_interceptor.dart';
 export 'src/peekaboo_overlay.dart';
 export 'src/peekaboo_socket.dart';
