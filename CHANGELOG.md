@@ -1,3 +1,32 @@
+## 0.2.1 — 2026-04-17
+
+**Fix: row taps were getting swallowed on noisy streams.**
+
+Two independent bugs, same symptom ("tap does nothing"):
+
+1. **Rebuild storm cancelling gestures.** `PeekabooStore.add` was
+   pushing a new emit on every log entry — on a chatty socket
+   that's easily 20 emits/sec. Each emit rebuilds the overlay's
+   ListView, disposing row widgets mid-tap and killing the InkWell's
+   TapGestureRecognizer before pointer-up.
+
+   Fix: coalesce emits into one broadcast per animation frame via
+   `SchedulerBinding.scheduleFrameCallback`. The overlay stays live,
+   taps survive.
+
+   Also added a stable `ValueKey('${channel}/${micros}')` on every
+   `_Row` so the InkWell's state (and recognizer) are preserved
+   across list rebuilds.
+
+2. **Gesture-arena starvation.** The panel used to wrap its content
+   in `GestureDetector(onTap: () {})` as a blocker for the outer
+   dismiss. That dummy recognizer competed with every child InkWell
+   in the arena and often won, silently consuming the tap.
+
+   Replaced with a `Stack` where the dim overlay is a SIBLING of
+   the panel content. Only the dim area has a dismiss `GestureDetector`;
+   panel content has no competing recognizers above the rows.
+
 ## 0.2.0 — 2026-04-17
 
 **Richer detail panel.** Tapping any row now opens a full-height sheet

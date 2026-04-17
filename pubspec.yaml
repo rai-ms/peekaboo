@@ -4,7 +4,7 @@ description: >
   captures Dio HTTP traffic, Socket.IO events, and internal app logs.
   Tap the floating eye to slide up a searchable, filterable panel.
   Zero-setup for QA builds; debug-only by default.
-version: 0.2.0
+version: 0.2.1
 repository: https://github.com/rai-ms/peekaboo
 issue_tracker: https://github.com/rai-ms/peekaboo/issues
 

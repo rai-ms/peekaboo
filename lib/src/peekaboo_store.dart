@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'log_types.dart';
 import 'peekaboo_config.dart';
@@ -24,6 +25,7 @@ class PeekabooStore {
 
   bool isEnabled = kDebugMode;
   PeekabooConfig _config = PeekabooConfig.defaults;
+  bool _emitScheduled = false;
 
   Stream<List<LogEntry>> get stream => _controller.stream;
   List<LogEntry> get entries => List.unmodifiable(_buffer);
@@ -49,11 +51,12 @@ class PeekabooStore {
       if (_buffer.length > _maxEntries) {
         _buffer.removeRange(_maxEntries, _buffer.length);
       }
-      try {
-        _controller.add(List.unmodifiable(_buffer));
-      } catch (e, st) {
-        _fail('stream broadcast', e, st);
-      }
+      // Coalesce emits to ≤ 1 per animation frame. Without this the
+      // overlay rebuilds dozens of times per second on a noisy socket,
+      // which tears down the InkWell gesture recognisers mid-tap and
+      // kills the row-tap interaction. One frame-scheduled emit keeps
+      // the UI live without losing taps.
+      _scheduleEmit();
       final sink = _config.onCapture;
       if (sink != null) {
         try {
@@ -74,6 +77,21 @@ class PeekabooStore {
     } catch (e, st) {
       _fail('clear', e, st);
     }
+  }
+
+  /// Schedule a single broadcast after the current frame. Subsequent
+  /// `add` calls within the same frame coalesce into one emit.
+  void _scheduleEmit() {
+    if (_emitScheduled) return;
+    _emitScheduled = true;
+    SchedulerBinding.instance.scheduleFrameCallback((_) {
+      _emitScheduled = false;
+      try {
+        _controller.add(List.unmodifiable(_buffer));
+      } catch (e, st) {
+        _fail('stream broadcast', e, st);
+      }
+    });
   }
 
   void _fail(String what, Object err, StackTrace st) {

@@ -38,14 +38,22 @@ class _PeekabooPanelState extends State<PeekabooPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withValues(alpha: 0.35),
-      child: GestureDetector(
-        onTap: widget.onClose,
-        child: Align(
-          alignment: Alignment.bottomCenter,
+    return Stack(
+      children: [
+        // Dim overlay that dismisses the panel on tap. Lives as a
+        // sibling of the panel content, not a parent — keeps its
+        // GestureDetector out of the arena for row taps.
+        Positioned.fill(
           child: GestureDetector(
-            onTap: () {},
+            onTap: widget.onClose,
+            behavior: HitTestBehavior.opaque,
+            child: Container(color: Colors.black.withValues(alpha: 0.35)),
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Material(
+            color: Colors.transparent,
             child: FractionallySizedBox(
               heightFactor: 0.75,
               child: Container(
@@ -92,10 +100,21 @@ class _PeekabooPanelState extends State<PeekabooPanel> {
                               itemCount: filtered.length,
                               separatorBuilder: (_, __) =>
                                   Divider(height: 1, color: _t.panelDivider),
-                              itemBuilder: (_, i) => _Row(
-                                theme: _t,
-                                entry: filtered[i],
-                              ),
+                              itemBuilder: (_, i) {
+                                final e = filtered[i];
+                                // Stable key — paired with frame-
+                                // coalesced emits (see PeekabooStore),
+                                // keeps each row's InkWell state alive
+                                // across stream rebuilds so mid-tap
+                                // gestures don't get cancelled.
+                                return _Row(
+                                  key: ValueKey(
+                                    '${e.channel}/${e.at.microsecondsSinceEpoch}',
+                                  ),
+                                  theme: _t,
+                                  entry: e,
+                                );
+                              },
                             );
                           },
                         ),
@@ -107,7 +126,7 @@ class _PeekabooPanelState extends State<PeekabooPanel> {
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -228,7 +247,7 @@ class _SearchField extends StatelessWidget {
 class _Row extends StatelessWidget {
   final PeekabooTheme theme;
   final LogEntry entry;
-  const _Row({required this.theme, required this.entry});
+  const _Row({super.key, required this.theme, required this.entry});
 
   @override
   Widget build(BuildContext context) {
