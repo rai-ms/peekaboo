@@ -1,0 +1,25 @@
+name: peekaboo
+description: >
+  Peek into your Flutter app — a draggable in-app log overlay that
+  captures Dio HTTP traffic, Socket.IO events, and internal app logs.
+  Tap the floating eye to slide up a searchable, filterable panel.
+  Zero-setup for QA builds; debug-only by default.
+version: 0.1.0
+repository: https://github.com/rai-ms/peekaboo
+issue_tracker: https://github.com/rai-ms/peekaboo/issues
+
+environment:
+  sdk: ^3.7.2
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
