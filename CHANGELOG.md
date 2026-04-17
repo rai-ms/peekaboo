@@ -1,3 +1,12 @@
+## 0.1.1 — 2026-04-17
+
+- Fix: tapping a log row in router-based apps (GoRouter, beamer, …)
+  threw `Navigator operation requested with a context that does not
+  include a Navigator`. Both the detail bottom-sheet launcher and
+  its close button now use `useRootNavigator: true` /
+  `Navigator.of(context, rootNavigator: true)` so the lookup always
+  resolves against the root navigator where the panel lives.
+
 ## 0.1.0 — 2026-04-17
 
 - Initial release.

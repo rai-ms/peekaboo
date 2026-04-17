@@ -300,10 +300,16 @@ class _Row extends StatelessWidget {
   }
 
   void _showDetail(BuildContext context) {
+    // Apps that wire their routing through a router (GoRouter, beamer,
+    // …) usually have only a root Navigator — a nested lookup from
+    // the panel's captured context throws "context does not include a
+    // Navigator". useRootNavigator:true targets that root explicitly
+    // so the detail sheet works in every routing setup.
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: theme.panelBackground,
       isScrollControlled: true,
+      useRootNavigator: true,
       builder: (_) => _DetailSheet(theme: theme, entry: entry),
     );
   }
@@ -370,7 +376,10 @@ class _DetailSheet extends StatelessWidget {
                   ),
                   IconButton(
                     icon: Icon(Icons.close, color: theme.panelTextPrimary),
-                    onPressed: () => Navigator.of(context).maybePop(),
+                    // Root-navigator pop so it works in router-based apps
+                    // that don't expose a nested Navigator here.
+                    onPressed: () =>
+                        Navigator.of(context, rootNavigator: true).maybePop(),
                   ),
                 ],
               ),
