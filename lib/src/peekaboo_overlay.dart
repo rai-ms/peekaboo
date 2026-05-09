@@ -54,10 +54,21 @@ class _PeekabooOverlayState extends State<PeekabooOverlay> {
           ),
         ),
         if (_open)
+          // Nested Navigator so taps inside the panel — `_Row._showDetail`
+          // calls `showModalBottomSheet` — find a Navigator ancestor.
+          // Without this, apps using `MaterialApp.router` route their
+          // own Navigator deep inside the builder's child tree, which
+          // makes the panel a sibling (not a descendant) of any
+          // Navigator. The detail sheet then crashes with "context does
+          // not include a Navigator" even with `useRootNavigator: true`.
           Positioned.fill(
-            child: PeekabooPanel(
-              theme: widget.theme,
-              onClose: () => setState(() => _open = false),
+            child: Navigator(
+              onGenerateRoute: (_) => MaterialPageRoute<void>(
+                builder: (_) => PeekabooPanel(
+                  theme: widget.theme,
+                  onClose: () => setState(() => _open = false),
+                ),
+              ),
             ),
           ),
       ],
